@@ -42,8 +42,11 @@ OPS = [
     "SHR",
     "POP",
     "HALT",
+    "RDSP",
+    "WDSP",
+    "RRSP",
+    "WRSP"
 ]
-
 
 class CalVMWriter:
     def __init__(self):
