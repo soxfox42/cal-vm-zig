@@ -102,7 +102,6 @@ int_sizes = {
 
 
 def process_int_token(match, push=False):
-    print(match.groups())
     if "0x" in match[0]:
         value = int(match[1] + match[3], 16)
     else:
