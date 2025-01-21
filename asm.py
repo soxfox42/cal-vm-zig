@@ -11,6 +11,7 @@ OPS = [
     "ADD",
     "SUB",
     "MUL",
+    "IECALL",
     "DIV",
     "IDIV",
     "MOD",
@@ -39,7 +40,6 @@ OPS = [
     "RET",
     "SHL",
     "SHR",
-    "PUSH",
     "POP",
     "HALT",
 ]
@@ -99,6 +99,8 @@ int_sizes = {
     ":h": 2,
     ":w": 4,
 }
+
+
 def process_int_token(match, push=False):
     print(match.groups())
     if "0x" in match[0]:
@@ -124,6 +126,7 @@ def process_int_token(match, push=False):
 
     out.write(*value.to_bytes(size, "little"))
 
+
 def process_token(token, push=False):
     if token == "[code]":
         out.to_code()
@@ -136,7 +139,7 @@ def process_token(token, push=False):
     elif token == "[resw]":
         out.write(0, 0, 0, 0)
     elif token[0] == "#":
-        out.write(OPS.index("PUSH"))
+        out.write(0x80) # Immediate NOP >.<
         process_token(token[1:], push=True)
     elif token[0] == "&":
         out.ref(token[1:])
@@ -154,7 +157,7 @@ def process_token(token, push=False):
         opcode = OPS.index(token[:-1])
         out.write(0x80 | opcode)
     else:
-        out.write(0x9f)
+        out.write(0x9F)
         out.ref(token)
 
 
