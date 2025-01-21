@@ -11,7 +11,6 @@ OPS = [
     "ADD",
     "SUB",
     "MUL",
-    "IMUL",
     "DIV",
     "IDIV",
     "MOD",
@@ -106,7 +105,7 @@ def process_token(token):
     elif token == "[resw]":
         out.write(0, 0, 0, 0)
     elif token[0] == "#":
-        out.write(0x24)
+        out.write(OPS.index("PUSH"))
         process_token(token[1:])
     elif token[0] == "&":
         out.ref(token[1:])

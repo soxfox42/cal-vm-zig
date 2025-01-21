@@ -1,7 +1,7 @@
 const std = @import("std");
 const CalVM = @import("main.zig").CalVM;
 
-const Opcode = enum(u8) { NOP, JMP, JNZ, JZ, ADD, SUB, MUL, IMUL, DIV, IDIV, MOD, IMOD, DUP, OVER, SWAP, EQU, NEQU, GTH, LTH, IGTH, ILTH, AND, OR, XOR, NOT, WRB, WRH, WRW, RDB, RDH, RDW, CALL, ECALL, RET, SHL, SHR, PUSH, POP, HALT, _ };
+const Opcode = enum(u8) { NOP, JMP, JNZ, JZ, ADD, SUB, MUL, DIV, IDIV, MOD, IMOD, DUP, OVER, SWAP, EQU, NEQU, GTH, LTH, IGTH, ILTH, AND, OR, XOR, NOT, WRB, WRH, WRW, RDB, RDH, RDW, CALL, ECALL, RET, SHL, SHR, PUSH, POP, HALT };
 const max_int = std.math.maxInt(u32);
 
 pub fn step(self: *CalVM) !void {
@@ -205,10 +205,6 @@ pub fn step(self: *CalVM) !void {
         },
         .HALT => {
             self.running = false;
-        },
-        else => {
-            std.debug.print("Unknown opcode 0x{x:02} @ {x:04}\n", .{ instruction, self.ip });
-            return error.UnknownOpcode;
         },
     }
 }
