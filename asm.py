@@ -93,7 +93,38 @@ source = re.sub(r";[^\n]*\n", "\n", source)
 # magic incantation that grabs space-separated tokens, but counts strings as one token
 tokens = re.findall(r'"(?:[^\\"]|\\.)*"|[^\s]+', source)
 
-def process_token(token):
+number_re = re.compile(r"^(-?)(?:([0-9]+)|0x([0-9A-F]+))(:[bhw])?$")
+int_sizes = {
+    ":b": 1,
+    ":h": 2,
+    ":w": 4,
+}
+def process_int_token(match, push=False):
+    print(match.groups())
+    if "0x" in match[0]:
+        value = int(match[1] + match[3], 16)
+    else:
+        value = int(match[1] + match[2], 10)
+
+    size = int_sizes[match[4]] if match[4] else 4
+    max_value = (1 << size * 8) - 1
+
+    if push and match[4]:
+        print("ERROR: cannot specify push size")
+        out.valid = False
+        return
+
+    if value > max_value or value < -max_value // 2:
+        print(f"ERROR: int literal out of range ({token})")
+        out.valid = False
+        return
+
+    if value < 0:
+        value = value & max_value
+
+    out.write(*value.to_bytes(size, "little"))
+
+def process_token(token, push=False):
     if token == "[code]":
         out.to_code()
     elif token == "[data]":
@@ -106,7 +137,7 @@ def process_token(token):
         out.write(0, 0, 0, 0)
     elif token[0] == "#":
         out.write(OPS.index("PUSH"))
-        process_token(token[1:])
+        process_token(token[1:], push=True)
     elif token[0] == "&":
         out.ref(token[1:])
     elif token[0] == "@":
@@ -114,11 +145,8 @@ def process_token(token):
     elif match := re.match(r'^"(.*)"', token):
         value = match[1]
         out.write(*value.encode("utf-8"))
-    elif re.match(r"^-?[0-9]+$", token):
-        value = int(token)
-        if value < 0:
-            value = value & 0xFFFFFFFF
-        out.write(*value.to_bytes(4, "little"))
+    elif match := re.match(number_re, token):
+        process_int_token(match, push)
     elif token in OPS:
         opcode = OPS.index(token)
         out.write(opcode)
