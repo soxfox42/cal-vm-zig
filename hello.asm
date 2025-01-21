@@ -1,10 +1,10 @@
 	#&print_ch_name ECALLi 0 WRWi &print_ch
-	#&message NOP CALLi &print_str
+	#&message print_str
 	HALT
 
 @print_str
 	DUP RDB DUP JZi &done
-	RDWi &print_ch ECALL
+	IECALLi &print_ch
 	ADDi 1
 	JMPi &print_str
 @done RET

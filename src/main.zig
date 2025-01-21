@@ -30,6 +30,7 @@ pub const CalVM = struct {
 
     running: bool = true,
     ip: u32 = 0,
+    exit_code: u32 = 0,
 
     data_stack: Stack = .{},
     return_stack: Stack = .{},
@@ -66,6 +67,18 @@ pub const CalVM = struct {
             std.debug.print("ECall lookup {s} failed\n", .{ecall_name});
         }
         self.data_stack.push(ecall_id);
+    }
+
+    pub fn ecall(self: *CalVM, id: u32) !void {
+        if (id == 0) {
+            self.lookup();
+            return;
+        }
+        if (id > self.ecalls.items.len) {
+            std.debug.print("ECall 0x{x} missing\n", .{id});
+            return error.UnknownECall;
+        }
+        try self.ecalls.items[id - 1](self);
     }
 
     fn addECall(self: *CalVM, name: []const u8, func: ECall) !void {
@@ -135,4 +148,9 @@ pub fn main() !void {
     try vm.addECall("print_int", printInt);
     try vm.addECall("print_int_s", printSignedInt);
     try vm.run();
+
+    if (vm.exit_code != 0) {
+        try stderr.print("Exit code {}\n", .{vm.exit_code});
+    }
+    std.process.exit(@truncate(vm.exit_code));
 }

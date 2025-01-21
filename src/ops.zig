@@ -1,13 +1,54 @@
 const std = @import("std");
 const CalVM = @import("main.zig").CalVM;
 
-const Opcode = enum(u8) { NOP, JMP, JNZ, JZ, ADD, SUB, MUL, DIV, IDIV, MOD, IMOD, DUP, OVER, SWAP, EQU, NEQU, GTH, LTH, IGTH, ILTH, AND, OR, XOR, NOT, WRB, WRH, WRW, RDB, RDH, RDW, CALL, ECALL, RET, SHL, SHR, PUSH, POP, HALT };
+const Opcode = enum(u8) {
+    NOP,
+    JMP,
+    JNZ,
+    JZ,
+    ADD,
+    SUB,
+    MUL,
+    IECALL,
+    DIV,
+    IDIV,
+    MOD,
+    IMOD,
+    DUP,
+    OVER,
+    SWAP,
+    EQU,
+    NEQU,
+    GTH,
+    LTH,
+    IGTH,
+    ILTH,
+    AND,
+    OR,
+    XOR,
+    NOT,
+    WRB,
+    WRH,
+    WRW,
+    RDB,
+    RDH,
+    RDW,
+    CALL,
+    ECALL,
+    RET,
+    SHL,
+    SHR,
+    POP,
+    HALT,
+};
 const max_int = std.math.maxInt(u32);
 
 pub fn step(self: *CalVM) !void {
     const instruction = self.read(u8);
     const immediate = instruction & 0x80 != 0;
     const opcode: Opcode = @enumFromInt(instruction & 0x7f);
+
+    // std.debug.print("{} {} {}\n", .{ opcode, immediate, @intFromEnum(opcode) });
 
     if (immediate) {
         // Immediate just means push the next word to the stack first.
@@ -53,22 +94,22 @@ pub fn step(self: *CalVM) !void {
         .DIV => {
             const b = self.data_stack.pop();
             const a = self.data_stack.pop();
-            self.data_stack.push(@divFloor(a, b));
+            self.data_stack.push(@divTrunc(a, b));
         },
         .IDIV => {
             const b: i32 = @bitCast(self.data_stack.pop());
             const a: i32 = @bitCast(self.data_stack.pop());
-            self.data_stack.push(@bitCast(@divFloor(a, b)));
+            self.data_stack.push(@bitCast(@divTrunc(a, b)));
         },
         .MOD => {
             const b = self.data_stack.pop();
             const a = self.data_stack.pop();
-            self.data_stack.push(@mod(a, b));
+            self.data_stack.push(@rem(a, b));
         },
         .IMOD => {
             const b: i32 = @bitCast(self.data_stack.pop());
             const a: i32 = @bitCast(self.data_stack.pop());
-            self.data_stack.push(@bitCast(@mod(a, b)));
+            self.data_stack.push(@bitCast(@rem(a, b)));
         },
         .DUP => {
             const a = self.data_stack.pop();
@@ -173,15 +214,12 @@ pub fn step(self: *CalVM) !void {
         },
         .ECALL => {
             const ecall_id = self.data_stack.pop();
-            if (ecall_id == 0) {
-                self.lookup();
-                return;
-            }
-            if (ecall_id > self.ecalls.items.len) {
-                std.debug.print("ECall 0x{x} missing\n", .{ecall_id});
-                return error.UnknownECall;
-            }
-            try self.ecalls.items[ecall_id - 1](self);
+            try self.ecall(ecall_id);
+        },
+        .IECALL => {
+            const addr = self.data_stack.pop();
+            const ecall_id = std.mem.readInt(u32, self.ram[addr..][0..4], .little);
+            try self.ecall(ecall_id);
         },
         .RET => {
             self.ip = self.return_stack.pop();
@@ -196,15 +234,12 @@ pub fn step(self: *CalVM) !void {
             const a = self.data_stack.pop();
             self.data_stack.push(a >> @truncate(b));
         },
-        .PUSH => {
-            const val = self.read(u32);
-            self.data_stack.push(val);
-        },
         .POP => {
             _ = self.data_stack.pop();
         },
         .HALT => {
             self.running = false;
+            self.exit_code = if (immediate) self.data_stack.pop() else 0;
         },
     }
 }
