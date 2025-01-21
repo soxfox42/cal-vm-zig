@@ -17,7 +17,10 @@ const Stack = struct {
 
 const max_int = std.math.maxInt(u32);
 
-const ECall = *const fn (vm: *CalVM) anyerror!void;
+const ECall = struct {
+    func: *const fn (ctx: *anyopaque, vm: *CalVM) anyerror!void,
+    ctx: *anyopaque = undefined,
+};
 
 const BinHeader = packed struct {
     code_size: u32,
@@ -35,8 +38,6 @@ pub const CalVM = struct {
     data_stack: Stack = .{},
     return_stack: Stack = .{},
 
-    // TODO: add a *anyopaque context to ecall definitions for stateful ecalls?
-    // This could probably avoid the need for special-cased ecall 0.
     ecalls: std.ArrayList(ECall),
     ecall_names: std.StringHashMap(u32),
 
@@ -44,10 +45,13 @@ pub const CalVM = struct {
         const ram = try allocator.alloc(u8, 65536);
         @memcpy(ram[0..data.len], data);
 
+        var ecalls = std.ArrayList(ECall).init(allocator);
+        try ecalls.append(.{ .func = lookup });
+
         return .{
             .code = code,
             .ram = ram,
-            .ecalls = std.ArrayList(ECall).init(allocator),
+            .ecalls = ecalls,
             .ecall_names = std.StringHashMap(u32).init(allocator),
         };
     }
@@ -58,7 +62,7 @@ pub const CalVM = struct {
         return val;
     }
 
-    pub fn lookup(self: *CalVM) void {
+    pub fn lookup(_: *anyopaque, self: *CalVM) !void {
         const addr = self.data_stack.pop();
         const string_length = std.mem.readInt(u32, self.ram[addr..][0..4], .little);
         const ecall_name = self.ram[addr + 4 .. addr + 4 + string_length];
@@ -69,21 +73,18 @@ pub const CalVM = struct {
         self.data_stack.push(ecall_id);
     }
 
-    pub fn ecall(self: *CalVM, id: u32) !void {
-        if (id == 0) {
-            self.lookup();
-            return;
-        }
-        if (id > self.ecalls.items.len) {
+    fn addECall(self: *CalVM, name: []const u8, func: ECall) !void {
+        try self.ecalls.append(func);
+        try self.ecall_names.put(name, @intCast(self.ecalls.items.len - 1));
+    }
+
+    pub fn runECall(self: *CalVM, id: u32) !void {
+        if (id >= self.ecalls.items.len) {
             std.debug.print("ECall 0x{x} missing\n", .{id});
             return error.UnknownECall;
         }
-        try self.ecalls.items[id - 1](self);
-    }
-
-    fn addECall(self: *CalVM, name: []const u8, func: ECall) !void {
-        try self.ecalls.append(func);
-        try self.ecall_names.put(name, @intCast(self.ecalls.items.len));
+        const ecall = self.ecalls.items[id];
+        try ecall.func(ecall.ctx, self);
     }
 
     fn step(self: *CalVM) !void {
@@ -97,18 +98,18 @@ pub const CalVM = struct {
     }
 };
 
-fn printChar(vm: *CalVM) !void {
+fn printChar(_: *anyopaque, vm: *CalVM) !void {
     const val = vm.data_stack.pop();
     _ = try std.io.getStdOut().write(&[_]u8{@truncate(val)});
 }
 
-fn printSignedInt(vm: *CalVM) !void {
+fn printSignedInt(_: *anyopaque, vm: *CalVM) !void {
     const val = vm.data_stack.pop();
     const signed: i32 = @bitCast(val);
     _ = try std.io.getStdOut().writer().print("{}", .{signed});
 }
 
-fn printInt(vm: *CalVM) !void {
+fn printInt(_: *anyopaque, vm: *CalVM) !void {
     const val = vm.data_stack.pop();
     _ = try std.io.getStdOut().writer().print("{}", .{val});
 }
@@ -144,9 +145,9 @@ pub fn main() !void {
     }
 
     var vm = try CalVM.init(allocator, code, data);
-    try vm.addECall("print_ch", printChar);
-    try vm.addECall("print_int", printInt);
-    try vm.addECall("print_int_s", printSignedInt);
+    try vm.addECall("print_ch", .{ .func = printChar });
+    try vm.addECall("print_int", .{ .func = printInt });
+    try vm.addECall("print_int_s", .{ .func = printSignedInt });
     try vm.run();
 
     if (vm.exit_code != 0) {

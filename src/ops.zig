@@ -214,12 +214,12 @@ pub fn step(self: *CalVM) !void {
         },
         .ECALL => {
             const ecall_id = self.data_stack.pop();
-            try self.ecall(ecall_id);
+            try self.runECall(ecall_id);
         },
         .IECALL => {
             const addr = self.data_stack.pop();
             const ecall_id = std.mem.readInt(u32, self.ram[addr..][0..4], .little);
-            try self.ecall(ecall_id);
+            try self.runECall(ecall_id);
         },
         .RET => {
             self.ip = self.return_stack.pop();
