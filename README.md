@@ -4,7 +4,7 @@ This is an implementation of the [CalVM](https://github.com/callisto-lang/calvm)
 
 ## Implementation Details
 
-64KiB of RAM, up to 4GiB of ROM, 256 word data and return stacks.
+64KiB of RAM, up to 4GiB of ROM, 1024 word data and return stacks.
 
 Extension Calls:
 - **print_ch**: Print an ASCII character.

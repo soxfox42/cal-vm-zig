@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const Stack = struct {
-    buf: [256]u32 = undefined,
-    ptr: u8 = 0,
+    buf: [1024]u32 = undefined,
+    ptr: u32 = 0,
 
     pub fn push(self: *Stack, val: u32) void {
         self.buf[self.ptr] = val;

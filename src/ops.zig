@@ -2,44 +2,48 @@ const std = @import("std");
 const CalVM = @import("main.zig").CalVM;
 
 const Opcode = enum(u8) {
-    NOP,
-    JMP,
-    JNZ,
-    JZ,
-    ADD,
-    SUB,
-    MUL,
-    IECALL,
-    DIV,
-    IDIV,
-    MOD,
-    IMOD,
-    DUP,
-    OVER,
-    SWAP,
-    EQU,
-    NEQU,
-    GTH,
-    LTH,
-    IGTH,
-    ILTH,
-    AND,
-    OR,
-    XOR,
-    NOT,
-    WRB,
-    WRH,
-    WRW,
-    RDB,
-    RDH,
-    RDW,
-    CALL,
-    ECALL,
-    RET,
-    SHL,
-    SHR,
-    POP,
-    HALT,
+    NOP = 0b00000000,
+    JMP = 0b00000001,
+    JNZ = 0b00000010,
+    JZ = 0b00000011,
+    ADD = 0b00000100,
+    SUB = 0b00000101,
+    MUL = 0b00000110,
+    IECALL = 0b00000111,
+    DIV = 0b00001000,
+    IDIV = 0b00001001,
+    MOD = 0b00001010,
+    IMOD = 0b00001011,
+    DUP = 0b00001100,
+    OVER = 0b00001101,
+    SWAP = 0b00001110,
+    EQU = 0b00001111,
+    NEQU = 0b00010000,
+    GTH = 0b00010001,
+    LTH = 0b00010010,
+    IGTH = 0b00010011,
+    ILTH = 0b00010100,
+    AND = 0b00010101,
+    OR = 0b00010110,
+    XOR = 0b00010111,
+    NOT = 0b00011000,
+    WRB = 0b00011001,
+    WRH = 0b00011010,
+    WRW = 0b00011011,
+    RDB = 0b00011100,
+    RDH = 0b00011101,
+    RDW = 0b00011110,
+    CALL = 0b00011111,
+    ECALL = 0b00100000,
+    RET = 0b00100001,
+    SHL = 0b00100010,
+    SHR = 0b00100011,
+    POP = 0b00100100,
+    HALT = 0b00100101,
+    RDSP = 0b00100110,
+    WDSP = 0b00100111,
+    RRSP = 0b00101000,
+    WRSP = 0b00101001,
 };
 const max_int = std.math.maxInt(u32);
 
@@ -240,6 +244,20 @@ pub fn step(self: *CalVM) !void {
         .HALT => {
             self.running = false;
             self.exit_code = if (immediate) self.data_stack.pop() else 0;
+        },
+        .RDSP => {
+            self.data_stack.push(self.data_stack.ptr);
+        },
+        .WDSP => {
+            const ptr = self.data_stack.pop();
+            self.data_stack.ptr = ptr;
+        },
+        .RRSP => {
+            self.data_stack.push(self.return_stack.ptr);
+        },
+        .WRSP => {
+            const ptr = self.data_stack.pop();
+            self.return_stack.ptr = ptr;
         },
     }
 }
