@@ -150,8 +150,5 @@ pub fn main() !void {
     try vm.addECall("print_int_s", .{ .func = printSignedInt });
     try vm.run();
 
-    if (vm.exit_code != 0) {
-        try stderr.print("Exit code {}\n", .{vm.exit_code});
-    }
     std.process.exit(@truncate(vm.exit_code));
 }
